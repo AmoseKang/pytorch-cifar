@@ -14,17 +14,25 @@ import os
 import argparse
 
 from models.resnet import ResNet18
-from utils import progress_bar
+from utils import progress_bar, memoryDataset
 
 from tensorboardX import SummaryWriter
-writer = SummaryWriter()
+import numpy as np
+
+run_label = 'res18_common'
+
+
+writer = SummaryWriter(log_dir=os.path.join('runs', run_label))
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--epochs', '-e', default=150, type=int, help='batch')
-parser.add_argument('--batch-size', '-bs', default=64, type=int, help='batch size')
+parser.add_argument('--epochs', '-e', default=240, type=int, help='batch')
+parser.add_argument('--batch-size', '-bs', default=480,
+                    type=int, help='batch size')
 parser.add_argument('--resume', '-r', action='store_true',
                     help='resume from checkpoint')
+parser.add_argument('--lr_steps', default=[80, 160], type=float, nargs="+",
+                    metavar='LRSteps', help='epochs to decay learning rate by 10')
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -55,8 +63,6 @@ testset = torchvision.datasets.CIFAR10(
 testloader = torch.utils.data.DataLoader(
     testset, batch_size=args.batch_size, shuffle=False, num_workers=8)
 
-classes = ('plane', 'car', 'bird', 'cat', 'deer',
-           'dog', 'frog', 'horse', 'ship', 'truck')
 
 # Model
 print('==> Building model..')
@@ -80,7 +86,8 @@ if args.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/ckpt.t7')
+    checkpoint = torch.load('./checkpoint/%s/%s.checkpoint' %
+                            (run_label, run_label))
     net.load_state_dict(checkpoint['net'])
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch']
@@ -89,9 +96,16 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr,
                       momentum=0.9, weight_decay=5e-4)
 
+
+def adjust_learning_rate(optimizer, epoch, lr_steps):
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    decay = 0.1 ** (sum(epoch >= np.array(lr_steps)))
+    lr = args.lr * decay
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+
 # Training
-
-
 def train(epoch):
     print('\nEpoch: %d' % epoch)
     net.train()
@@ -148,12 +162,16 @@ def test(epoch):
             'net': net.state_dict(),
             'acc': acc,
             'epoch': epoch,
+            'args': args
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/ckpt.t7')
+        if not os.path.isdir('checkpoint/%s' % run_label):
+            os.mkdir('checkpoint/%s' % run_label)
+        torch.save(state, './checkpoint/'+run_label+'checkpoint')
 
 
-for epoch in range(start_epoch, start_epoch+args.epochs):
+for epoch in range(start_epoch, args.epochs):
+    adjust_learning_rate(optimizer, epoch, args.lr_steps)
     train(epoch)
     test(epoch)

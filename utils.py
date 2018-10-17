@@ -8,8 +8,28 @@ import sys
 import time
 import math
 
+import torch
 import torch.nn as nn
 import torch.nn.init as init
+
+
+class memoryDataset(torch.utils.data.Dataset):
+    def __init__(self, dset, transform=None):
+        self.img = []
+        self.target = []
+        self.transform = transform
+        for im, t in dset:
+            self.img.append(im)
+            self.target.append(t)
+
+    def __getitem__(self, idx):
+        if self.transform is None:
+            return self.img[idx], self.target[idx]
+        else:
+            return self.transform(self.img[idx]), self.target[idx]
+
+    def __len__(self):
+        return len(self.img)
 
 
 def get_mean_and_std(dataset):
