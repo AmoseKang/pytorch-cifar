@@ -13,7 +13,25 @@ import torch.nn as nn
 import torch.nn.init as init
 
 
-class memoryDataset(torch.utils.data.Dataset):
+class noise_dataset(torch.utils.data.Dataset):
+    def __init__(self, dset, noise=0.1, class_num=100):
+        import random
+        self.data = dset
+        self.mask = [random.randint(0, class_num-1) if
+                     random.random() < noise else -1 for i in range(len(dset))]
+        self.class_num = class_num
+
+    def __getitem__(self, idx):
+        if self.mask[idx] == -1:
+            return self.data[idx]
+        else:
+            return self.data[idx], self.mask[idx]
+
+    def __len__(self):
+        return len(self.data)
+
+
+class memory_dataset(torch.utils.data.Dataset):
     def __init__(self, dset, transform=None):
         self.img = []
         self.target = []

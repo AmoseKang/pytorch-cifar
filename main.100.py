@@ -13,14 +13,13 @@ import torchvision.transforms as transforms
 import os
 import argparse
 
-# from models.resnet import ResNet18
-from models.vgg import VGG
-from utils import progress_bar, memoryDataset
+
+from utils import progress_bar
 
 from tensorboardX import SummaryWriter
 import numpy as np
 
-run_label = 'vgg19_common'
+run_label = 'mobilev2_100_common'
 
 
 writer = SummaryWriter(log_dir=os.path.join('runs', run_label))
@@ -55,12 +54,12 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-trainset = torchvision.datasets.CIFAR10(
+trainset = torchvision.datasets.CIFAR100(
     root='~/Documents/data', train=True, download=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(
     trainset, batch_size=args.batch_size, shuffle=True, num_workers=8)
 
-testset = torchvision.datasets.CIFAR10(
+testset = torchvision.datasets.CIFAR100(
     root='~/Documents/data', train=False, download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(
     testset, batch_size=args.batch_size, shuffle=False, num_workers=8)
@@ -68,15 +67,19 @@ testloader = torch.utils.data.DataLoader(
 
 # Model
 print('==> Building model..')
-net = VGG('VGG19')
-# net = ResNet18()
+# from models.vgg import VGG
+# net = VGG('VGG19', num_class=100)
+# from models.resnet import ResNet18
+# net = ResNet18(num_classes=100)
 # net = PreActResNet18()
 # net = GoogLeNet()
 # net = DenseNet121()
 # net = ResNeXt29_2x64d()
 # net = MobileNet()
+# from models.mobilenetv2 import MobileNetV2
 # net = MobileNetV2()
-# net = DPN92()
+# from models.dpn import DPN26
+# net = DPN26(num_classes=100)
 # net = ShuffleNetG2()
 # net = SENet18()
 net = net.to(device)
